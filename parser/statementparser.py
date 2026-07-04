@@ -20,7 +20,7 @@ class StatementParser:
     def parse_table1(self):
         for page in self.doc:
             top = page.search_for("ACCOUNT DETAILS - INR")
-            bottom = page.search_for("Statement of Transactions in Savings Account Number: 035701533681 in INR for the period November 01, 2016 - November 30, 2016")
+            bottom = page.search_for("Statement of Transactions in Savings Account Number: 035701533681 in INR ")
 
             rect = self.get_region(page, cord_top=top, cord_bottom=bottom)
             lines=self.get_lines(page, rect)
@@ -32,7 +32,7 @@ class StatementParser:
     def parse_table2(self):
         '''parse second table into a list of dictionary with keys DATE,MODE,PARTICULARS,DEPOSITS,WITHDRAWLS,BALANCE'''
         for page in self.doc:
-            top = page.search_for("Statement of Transactions in Savings Account Number: 035701533681 in INR for the period November 01, 2016 - November 30, 2016")
+            top = page.search_for("Statement of Transactions in Savings Account Number: 035701533681 in INR ")
             bottom = page.search_for("Total:")
 
             rect = self.get_region(page, cord_top=top, cord_bottom=bottom)
@@ -76,8 +76,41 @@ class StatementParser:
                 values=re.split(r"\s{2,}",lines[1].strip())
                 contents=dict(zip(fields,values))
                 return contents
+
+    def parse_customer_details(self):
+        for page in self.doc:
+
+            blocks = page.get_text("blocks", sort=True)
+            values = []
+
+            for block in blocks:  #Name and address
+                x0, y0, x1, y1, text = block[:5]
+
+                if (20 <= x0 <= 40 and 120 <= y0 <= 180):
+                    values.append(text.strip())   
+            customer_details = {"name": values[0],"address": values[1]}
+
+            
+            for block in blocks:  #custid and date
+                text = block[4]
+
+                match = re.search(r"Cust ID\s*:\s*(\d+)\s+as on\s+(.+)",text)
+
+                if match:
+                    customer_details['cust_id'] = match.group(1)
+                    customer_details['date'] = match.group(2)
+                acc_match = re.search(r"Savings Account Number:\s*(\d+)\s+in INR",text)
+
+                if acc_match:
+                    customer_details["account_number"] = acc_match.group(1)
+
+            return customer_details
+                    
+        
+                
     def parse(self):
         return {
+            "customer_details": self.parse_customer_details(),
             "table1": self.parse_table1(),
             "table2": self.parse_table2(),
             "table3": self.parse_table3(),
@@ -87,4 +120,4 @@ if __name__ == "__main__":
     parser = StatementParser("icc-stmt.pdf")
 
     result = parser.parse()
-    print(result["table1"])
+    print(result["customer_details"])
