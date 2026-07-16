@@ -44,6 +44,7 @@ class StatementParser:
             for index,row in enumerate(table.extract()):        
                 if index==0 or all(value in ('','_') for value in row):
                     continue
+                #row=[func(row)for func,val in zip(types,row)]]
                 contents.append(dict(zip(headers,row)))
             return contents
         
@@ -59,7 +60,7 @@ class StatementParser:
             values=[int(value) for value in values_list]
             table3={"SAVINGS ACCOUNT NUMBER":values[0],
                                 "LINKED PAYBACK NUMBER":values[1],
-                                "Points earned for the month of October, 2016":{"My Savings REWARD":values[2],"DEBIT CARD":values[3]},
+                                "Points earned for the month october":{"My Savings REWARD":values[2],"DEBIT CARD":values[3]},
                                 "POINTS BALANCE*":values[4]}
             return table3
 
@@ -120,4 +121,4 @@ if __name__ == "__main__":
     parser = StatementParser("icc-stmt.pdf")
 
     result = parser.parse()
-    print(result["customer_details"])
+    print(result["table4"])
