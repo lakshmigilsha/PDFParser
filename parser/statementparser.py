@@ -1,4 +1,5 @@
 import pymupdf,re
+from schemas.dataschema import CustomerData,AccountData,TransactionData,PointsData,OtherData
 class StatementParser:
 
     def __init__(self,path):
@@ -27,7 +28,8 @@ class StatementParser:
 
             headers=["ACCOUNT TYPE","A/C. BALANCE (I)","FIXED DEPOSITS (LINKED) BAL. (II)","TOTAL BALANCE (I+II)","NOMINATION"]
             values=re.split(r"\s{2,}",lines[1])
-            return dict(zip(headers,values))
+            table1=dict(zip(headers,values))
+            return AccountData.from_dict(table1)
         
     def parse_table2(self):
         '''parse second table into a list of dictionary with keys DATE,MODE,PARTICULARS,DEPOSITS,WITHDRAWLS,BALANCE'''
@@ -44,8 +46,9 @@ class StatementParser:
             for index,row in enumerate(table.extract()):        
                 if index==0 or all(value in ('','_') for value in row):
                     continue
-                #row=[func(row)for func,val in zip(types,row)]]
-                contents.append(dict(zip(headers,row)))
+                row=dict(zip(headers,row))
+                row_obj=TransactionData.from_dict(row)
+                contents.append(row_obj)
             return contents
         
     def parse_table3(self):
@@ -62,7 +65,7 @@ class StatementParser:
                                 "LINKED PAYBACK NUMBER":values[1],
                                 "Points earned for the month october":{"My Savings REWARD":values[2],"DEBIT CARD":values[3]},
                                 "POINTS BALANCE*":values[4]}
-            return table3
+            return PointsData.from_dict(table3)
 
     def parse_table4(self):
         
@@ -76,7 +79,7 @@ class StatementParser:
                 fields=re.split(r"\s{2,}",lines[0].strip())
                 values=re.split(r"\s{2,}",lines[1].strip())
                 contents=dict(zip(fields,values))
-                return contents
+                return OtherData.from_dict(contents)
 
     def parse_customer_details(self):
         for page in self.doc:
@@ -105,7 +108,7 @@ class StatementParser:
                 if acc_match:
                     customer_details["account_number"] = acc_match.group(1)
 
-            return customer_details
+            return CustomerData.from_dict(customer_details)
                     
         
                 
@@ -118,7 +121,7 @@ class StatementParser:
             "table4": self.parse_table4()
         }
 if __name__ == "__main__":
-    parser = StatementParser("icc-stmt.pdf")
+    parser = StatementParser("parser/icc-stmt.pdf")
 
     result = parser.parse()
-    print(result["table4"])
+    print(result["table2"])
