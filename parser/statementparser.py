@@ -1,12 +1,20 @@
 import pymupdf,re
-from schemas.dataschema import CustomerData,AccountData,TransactionData,PointsData,OtherData
+from schemas.dataschema import (
+CustomerData,
+AccountData,
+TransactionData,
+PointsData,
+OtherData,
+)
+
 class StatementParser:
 
     def __init__(self,path):
         self.doc=pymupdf.open(path)
 
     def get_region(self, page, cord_top=None, cord_bottom=None,cord_left=None, cord_right=None):
-
+        '''select the area under the coordinates'''
+        
         top = cord_top[0].y1 if cord_top else page.rect.y0
         left = cord_left[0].x1 if cord_left else page.rect.x0
         right = cord_right[0].x0 if cord_right else page.rect.x1
@@ -15,10 +23,18 @@ class StatementParser:
         return pymupdf.Rect(left, top, right, bottom)
     
     def get_lines(self, page, rect):
+
+        '''Get the list of text from a clipped rectangle portion'''
+
         text = page.get_text(clip=rect, sort=True)
         return [line.strip() for line in text.splitlines() if line.strip()]
     
-    def parse_table1(self):
+    def parse_table1(self)-> AccountData:
+        '''
+        first:Parse Account Details table into a dictionary
+        second:Convert the dictionary of values into AccountData Instance and return the same
+        '''
+
         for page in self.doc:
             top = page.search_for("ACCOUNT DETAILS - INR")
             bottom = page.search_for("Statement of Transactions in Savings Account Number: 035701533681 in INR ")
@@ -31,8 +47,12 @@ class StatementParser:
             table1=dict(zip(headers,values))
             return AccountData.from_dict(table1)
         
-    def parse_table2(self):
-        '''parse second table into a list of dictionary with keys DATE,MODE,PARTICULARS,DEPOSITS,WITHDRAWLS,BALANCE'''
+    def parse_table2(self) -> TransactionData:
+        '''
+        first:Parse Transaction table into a dictionary
+        second:Convert the dictionary of values into TransactionData Instance and return the same
+        '''
+        
         for page in self.doc:
             top = page.search_for("Statement of Transactions in Savings Account Number: 035701533681 in INR ")
             bottom = page.search_for("Total:")
@@ -51,7 +71,12 @@ class StatementParser:
                 contents.append(row_obj)
             return contents
         
-    def parse_table3(self):
+    def parse_table3(self)-> PointsData:
+        '''
+        first:Parse Reward Points table into a dictionary
+        second:Convert the dictionary of values into PointsData Instance and return the same
+        '''
+
         for page in self.doc:
             top = page.search_for("REWARD POINTS SUMMARY")
             bottom = page.search_for("To get current reward points balance")
@@ -67,8 +92,11 @@ class StatementParser:
                                 "POINTS BALANCE*":values[4]}
             return PointsData.from_dict(table3)
 
-    def parse_table4(self):
-        
+    def parse_table4(self)-> OtherData:
+        '''
+        first:Parse Other Information table into a dictionary
+        second:Convert the dictionary of values into OtherData Instance and return the same
+        '''
         for page in self.doc:
                 top = page.search_for("Account Related Other Information")
                 bottom = page.search_for("* Nominee name is displayed only on specific consent of customer.")
@@ -81,7 +109,11 @@ class StatementParser:
                 contents=dict(zip(fields,values))
                 return OtherData.from_dict(contents)
 
-    def parse_customer_details(self):
+    def parse_customer_details(self)-> CustomerData:
+        '''
+        first:Parse Customer Information from pdf into a dictionary
+        second:Convert the dictionary of values into CustomerData Instance and return the same
+        '''
         for page in self.doc:
 
             blocks = page.get_text("blocks", sort=True)
@@ -113,6 +145,14 @@ class StatementParser:
         
                 
     def parse(self):
+        '''
+        Returns a dictionary with keys:
+        customer_details,
+        table1,
+        table2,
+        table3,
+        table4 and their respective instance data as values
+        '''
         return {
             "customer_details": self.parse_customer_details(),
             "table1": self.parse_table1(),
@@ -120,8 +160,3 @@ class StatementParser:
             "table3": self.parse_table3(),
             "table4": self.parse_table4()
         }
-if __name__ == "__main__":
-    parser = StatementParser("parser/icc-stmt.pdf")
-
-    result = parser.parse()
-    print(result["table2"])
