@@ -5,7 +5,11 @@ from services.services import StatementService
 from pathlib import Path
 import tempfile
 import shutil
-from schemas.pydanticschema import pdfResponse
+from schemas.pydanticschema import (
+    pdfResponse,
+    TransactionResponse,
+)
+from uuid import UUID
  
 router=APIRouter()
 
@@ -51,3 +55,11 @@ async def uploaded_pdf() -> list[pdfResponse]:
     service = StatementService()
     list_pdfs = service.list_uploaded_pdf()
     return list_pdfs
+
+@router.get("/uploaded_pdf_list/{file_id}/transactions/",
+            response_model=list[TransactionResponse],
+            )
+async def uploaded_pdf_transaction(file_id:UUID) -> list[TransactionResponse]:
+    service = StatementService()
+    list_transactions = service.selected_pdf_transaction(file_id)
+    return list_transactions

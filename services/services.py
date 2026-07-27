@@ -11,6 +11,8 @@ from database.models import (
 )
 from dataclasses import asdict
 from parser.statementparser import StatementParser
+from uuid import UUID
+
 class StatementService:
 
     def save_statement(self,result,original_name):
@@ -94,7 +96,14 @@ class StatementService:
         session.add(others_db)
 
     def list_uploaded_pdf(self):
-        """Return the list of all uploaded pdf files"""
+        """Return all uploaded pdf files"""
         with Session(engine) as session:
             get_pdf_stmt=select(FileDetails)
             return session.scalars(get_pdf_stmt).all()
+
+    def selected_pdf_transaction(self,file_id):
+        with Session(engine) as session:
+            get_transaction_stmt = select(Transactions).where(
+                Transactions.file_id == file_id
+                )
+            return session.scalars(get_transaction_stmt).all()
