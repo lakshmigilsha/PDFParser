@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 from database.database import engine
 from database.models import (
     CustomerDetails,
@@ -91,3 +92,9 @@ class StatementService:
                             **asdict(others),
                             )
         session.add(others_db)
+
+    def list_uploaded_pdf(self):
+        """Return the list of all uploaded pdf files"""
+        with Session(engine) as session:
+            get_pdf_stmt=select(FileDetails)
+            return session.scalars(get_pdf_stmt).all()
