@@ -12,27 +12,29 @@ from decimal import Decimal
 from database.database import Base
 import uuid
 
-class CustomerDetails(Base):
-    __tablename__ = "customer_details"
-    name:Mapped[str]=mapped_column(String(40))
-    address:Mapped[str]=mapped_column(String(150))
-    cust_id:Mapped[int]=mapped_column(primary_key=True)
-    date:Mapped[date] = mapped_column(Date)
-    account_number:Mapped[int] = mapped_column(Integer)
-
 class FileDetails(Base):
     """
-    Metadata for files uploaded by customers.
+    Metadata of files uploaded by customers.
     """
     __tablename__="file_details"
     file_id:Mapped[uuid.UUID]=mapped_column(primary_key=True,default=uuid.uuid4)
-    cust_id:Mapped[int]=mapped_column(ForeignKey("customer_details.cust_id"))
     filename:Mapped[str]=mapped_column(String(260))   #temporary file name saved to device
     original_name:Mapped[str]=mapped_column(String(100)) #original filename uploaded by customer
     status: Mapped[str] = mapped_column(default="processing")
     uploaded_at: Mapped[datetime] = mapped_column(default=datetime.now)
     error_message: Mapped[str | None] = mapped_column(nullable=True)
 
+class CustomerDetails(Base):
+    __tablename__ = "customer_details"
+    file_id: Mapped[uuid.UUID] = mapped_column(
+            ForeignKey("file_details.file_id"),
+            primary_key=True
+        )
+    name:Mapped[str]=mapped_column(String(40))
+    address:Mapped[str]=mapped_column(String(150))
+    cust_id:Mapped[int]=mapped_column(primary_key=True)
+    date:Mapped[date] = mapped_column(Date)
+    account_number:Mapped[int] = mapped_column(Integer)
 
 class AccountDetails(Base):
     __tablename__ = "Account_details"
