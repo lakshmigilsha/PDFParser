@@ -15,53 +15,55 @@ from uuid import UUID
 
 class StatementService:
 
-    def save_statement(self,result,original_name):
+    def save_statement(self,result,original_name,temp_path):
         with Session(engine) as session:
-
-            cust_id = self.save_customer(
+            file = self.save_file(
                 session,
-                result["customer_details"],
-                )
-            file_id = self.save_file(
-                session,
-                cust_id,
                 original_name,
+                temp_path,
                 )
-            self.save_account(
-                session,result["table1"],cust_id,file_id)
-            self.save_transactions(
-                session,result["table2"],cust_id,file_id)
-            self.save_points(
-                session,result["table3"],cust_id,file_id)
-            self.save_other_data(
-                session,result["table4"],cust_id,file_id)
-            session.commit()
+            file_id=file.file_id
+            session.commit()   #Transaction 1
+            try:
+                cust_id = self.save_customer(
+                                session,
+                                result["customer_details"],
+                                file_id,
+                                )
+                self.save_account(
+                    session,result["table1"],cust_id,file_id)
+                self.save_transactions(
+                    session,result["table2"],cust_id,file_id)
+                self.save_points(
+                    session,result["table3"],cust_id,file_id)
+                self.save_other_data(
+                    session,result["table4"],cust_id,file_id)
+                file.status="completed"
+                session.commit()  #Transaction 2
 
-    def save_customer(self, session, customer):
-        old_customer = session.get(
-        CustomerDetails,
-        customer.cust_id
-        )
-        if old_customer:
-            return old_customer.cust_id
-        customer_db = CustomerDetails(**asdict(customer))
-        session.add(customer_db)
-        session.flush()   
-        return customer_db.cust_id
+            except Exception as e:
+              session.rollback()
+              file.error_message=str(e)
+              file.status="Failed"
+              session.commit()    #Transaction 2
 
-    def save_file(self, session, cust_id, original_name):
+    def save_file(self, session,original_name,temp_path):
         file_db = FileDetails(
-        cust_id=cust_id,
-        filename="temp_file",
-        original_name=original_name,
-        status="processing"
+        filename= temp_path,
+        original_name= original_name,
+        status= "processing",
         )
 
         session.add(file_db)
         session.flush()
 
-        return file_db.file_id
+        return file_db
 
+    def save_customer(self, session, customer,file_id):
+            customer_db = CustomerDetails(file_id=file_id,**asdict(customer))
+            session.add(customer_db)
+            session.flush()   
+            return customer_db.cust_id
 
     def save_account(self,session,account,cust_id,file_id):
         account_db=AccountDetails(cust_id=cust_id,
@@ -107,3 +109,32 @@ class StatementService:
                 Transactions.file_id == file_id
                 )
             return session.scalars(get_transaction_stmt).all()
+
+    def selected_pdf_customer(self,file_id):
+        with Session(engine) as session:
+                get_customer_stmt = select(CustomerDetails).where(
+                    CustomerDetails.file_id == file_id
+                    )
+                return session.scalars(get_customer_stmt).all()
+
+    def selected_pdf_account(self,file_id):
+            with Session(engine) as session:
+                    get_account_stmt = select(AccountDetails).where(
+                        AccountDetails.file_id == file_id
+                        )
+                    return session.scalars(get_account_stmt).all()
+
+    def selected_pdf_points(self,file_id):
+                with Session(engine) as session:
+                        get_points_stmt = select(RewardPoints).where(
+                            RewardPoints.file_id == file_id
+                            )
+                        return session.scalars(get_points_stmt).all()
+
+    def selected_pdf_other(self,file_id):
+                    with Session(engine) as session:
+                            get_other_stmt = select(OtherInfo).where(
+                                OtherInfo.file_id == file_id
+                                )
+                            return session.scalars(get_other_stmt).all()   
+        
